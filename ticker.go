@@ -392,8 +392,8 @@ func (s *Ticker) watchCryptoPrice() {
 
 	// Grab custom activity messages
 	var custom_activity []string
-	itr := 0
-	itrSeed := 0.0
+	//itr := 0
+	//itrSeed := 0.0
 	if s.Activity != "" {
 		custom_activity = strings.Split(s.Activity, ";")
 		if s.Multiplier != 1 {
@@ -427,16 +427,17 @@ func (s *Ticker) watchCryptoPrice() {
 			var fmtDiffPercent string
 
 			// get the coin price data
-			if rdb == nilCache {
-				priceData, err = utils.GetCryptoPrice(s.Name)
-			} else {
-				priceData, err = utils.GetCryptoPriceCache(rdb, ctx, s.Name)
-				if err != nil {
-					cacheMisses.Inc()
-				} else {
-					cacheHits.Inc()
-				}
-			}
+			//if rdb == nilCache {
+			priceData, err = utils.GetCryptoPrice(s.Name)
+
+			// } else {
+			// 	priceData, err = utils.GetCryptoPriceCache(rdb, ctx, s.Name)
+			// 	if err != nil {
+			// 		cacheMisses.Inc()
+			// 	} else {
+			// 		cacheHits.Inc()
+			// 	}
+			// }
 			if err != nil {
 				logger.Errorf("Unable to fetch crypto price for %s: %s", s.Name, err)
 				if strings.Contains(err.Error(), "rate limited") {
@@ -539,7 +540,7 @@ func (s *Ticker) watchCryptoPrice() {
 				if displayName == s.Decorator {
 					nickname = fmtPrice
 				} else {
-					nickname = fmt.Sprintf("%s %s %s", displayName, s.Decorator, fmtPrice)
+					nickname = fmt.Sprintf("%s%s %s", displayName, s.Decorator, fmtPrice)
 				}
 
 				// format activity
@@ -601,30 +602,47 @@ func (s *Ticker) watchCryptoPrice() {
 						}
 					}
 
-					time.Sleep(time.Duration(s.Frequency) * time.Second)
+					//time.Sleep(time.Duration(s.Frequency) * time.Second)
 				}
 
 				// Custom activity messages
-				if len(custom_activity) > 0 {
+				// if len(custom_activity) > 0 {
 
-					// Display the real activity once per cycle
-					if itr == len(custom_activity) {
-						itr = 0
-						itrSeed = 0.0
-					} else if math.Mod(itrSeed, 2.0) == 1.0 {
-						activity = custom_activity[itr]
-						itr++
-						itrSeed++
-					} else {
-						activity = custom_activity[itr]
-						itrSeed++
-					}
+				// 	// Display the real activity once per cycle
+				// 	if itr == len(custom_activity) {
+				// 		itr = 0
+				// 		itrSeed = 0.0
+				// 	} else if math.Mod(itrSeed, 2.0) == 1.0 {
+				// 		activity = custom_activity[itr]
+				// 		itr++
+				// 		itrSeed++
+				// 	} else {
+				// 		activity = custom_activity[itr]
+				// 		itrSeed++
+				// 	}
+				// }
+				marketCap := priceData.MarketData.MarketCap.USD
+				var marketCapString string
+				if marketCap > 100000 {
+					marketCapString = fmt.Sprintf("%.2fK Mcap", marketCap/1000)
+				} else if marketCap > 1000000 {
+					marketCapString = fmt.Sprintf("%.2fM Mcap", marketCap/1000000)
 				}
+				activity = marketCapString
 
 				// set activity
 				wg := sync.WaitGroup{}
+				const ActivityTypeWatching = 3
 				for _, sess := range shards {
-					err = sess.UpdateGameStatus(0, activity)
+					err = sess.UpdateStatusComplex(discordgo.UpdateStatusData{
+						Activities: []*discordgo.Activity{
+							{
+								Name: activity,
+								Type: ActivityTypeWatching,
+							},
+						},
+						Status: "online",
+					})
 					if err != nil {
 						logger.Errorf("Unable to set activity: %s", err)
 					} else {
