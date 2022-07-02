@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 	"sync"
 
 	"github.com/go-redis/redis/v8"
@@ -28,6 +29,7 @@ var (
 	version       *bool
 	rdb           *redis.Client
 	ctx           context.Context
+	tickerFolder  *string
 )
 
 func init() {
@@ -41,6 +43,7 @@ func init() {
 	cache = flag.Bool("cache", false, "enable cache for coingecko")
 	managed = flag.Bool("managed", false, "forcefully keep db and discord updated with bot values")
 	version = flag.Bool("version", false, "print version")
+	tickerFolder = flag.String("tickerFolder", "./discord-bot-configs", "ticker configs in here will be used to auto create bot tickers")
 	flag.Parse()
 
 	// init logger
@@ -84,15 +87,16 @@ func main() {
 }
 
 func autoCreateTickers() {
-	configDirectory := "./discord-bot-configs/"
+	configDirectory := *tickerFolder
 	files, err := ioutil.ReadDir(configDirectory)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	r, _ := regexp.Compile(`\.sample\.`)
 	for _, file := range files {
-		if !file.IsDir() {
-			fileFullPath := fmt.Sprintf("%s%s", configDirectory, file.Name())
+		if !file.IsDir() && r.FindString(file.Name()) == "" {
+			fileFullPath := fmt.Sprintf("%s/%s", configDirectory, file.Name())
 			jsonFile, err := os.Open(fileFullPath)
 			if err != nil {
 				fmt.Println("Error reading json file: ", file.Name())
