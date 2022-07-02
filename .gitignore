@@ -21,3 +21,5 @@ state.db
 discord-stock-ticker
 test.state
 dist/
+
+discord-bot-configs/*.json

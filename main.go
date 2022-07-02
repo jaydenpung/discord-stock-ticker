@@ -93,9 +93,9 @@ func autoCreateTickers() {
 		log.Fatal(err)
 	}
 
-	r, _ := regexp.Compile(`\.sample\.`)
+	r, _ := regexp.Compile(`\.json$`)
 	for _, file := range files {
-		if !file.IsDir() && r.FindString(file.Name()) == "" {
+		if !file.IsDir() && r.FindString(file.Name()) != "" {
 			fileFullPath := fmt.Sprintf("%s/%s", configDirectory, file.Name())
 			jsonFile, err := os.Open(fileFullPath)
 			if err != nil {
