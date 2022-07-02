@@ -1,7 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"sync"
 
@@ -27,7 +31,7 @@ var (
 )
 
 func init() {
-	logLevel := flag.Int("logLevel", 1, "defines the log level: 0=INFO 1=DEBUG")
+	logLevel := flag.Int("logLevel", 0, "defines the log level: 0=INFO 1=DEBUG")
 	address = flag.String("address", "0.0.0.0:8080", "address:port to bind http server to")
 	db = flag.String("db", "", "file to store tickers in")
 	frequency = flag.Int("frequency", 0, "set frequency for all tickers")
@@ -73,6 +77,42 @@ func main() {
 	wg.Add(1)
 	NewManager(*address, *db, tickerCount, rdb, ctx)
 
+	autoCreateTickers()
+
 	// wait forever
 	wg.Wait()
+}
+
+func autoCreateTickers() {
+	configDirectory := "./discord-bot-configs/"
+	files, err := ioutil.ReadDir(configDirectory)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, file := range files {
+		if !file.IsDir() {
+			fileFullPath := fmt.Sprintf("%s%s", configDirectory, file.Name())
+			jsonFile, err := os.Open(fileFullPath)
+			if err != nil {
+				fmt.Println("Error reading json file: ", file.Name())
+			}
+			createTicker(jsonFile)
+		}
+	}
+}
+
+func createTicker(jsonFile *os.File) {
+	reqURL := fmt.Sprintf("http://%s/ticker", *address)
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	req, err := http.NewRequest("POST", reqURL, bytes.NewBuffer(byteValue))
+	if err != nil {
+		fmt.Println("Error making request: ", err)
+	}
+	req.Header.Add("Content-Type", "application/json")
+	client := &http.Client{}
+	_, err = client.Do(req)
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
 }
