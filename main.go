@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/namsral/flag"
@@ -80,6 +81,7 @@ func main() {
 	wg.Add(1)
 	NewManager(*address, *db, tickerCount, rdb, ctx)
 
+	time.Sleep(5 * time.Second)
 	autoCreateTickers()
 
 	// wait forever
